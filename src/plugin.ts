@@ -1,86 +1,98 @@
-import {InputParams} from 'tweakpane/lib/blade/common/api/types';
-import {BindingTarget} from 'tweakpane/lib/common/binding/target';
-import {CompositeConstraint} from 'tweakpane/lib/common/constraint/composite';
 import {
-	createRangeConstraint,
-	createStepConstraint,
-} from 'tweakpane/lib/input-binding/number/plugin';
-import {InputBindingPlugin} from 'tweakpane/lib/input-binding/plugin';
+	BladePlugin,
+	Constraint,
+	createNumberFormatter,
+	createValue,
+	LabeledValueController,
+	ParamsParsers,
+	parseParams,
+	PickerLayout,
+	PointNdConstraint,
+	RangeConstraint,
+	ValueMap,
+} from '@tweakpane/core';
+import {BaseBladeParams} from 'tweakpane';
 
-import {PluginController} from './controller';
+import {CubicBezierApi} from './api/cubic-bezier';
+import {CubicBezierController} from './controller/cubic-bezier';
+import {CubicBezier, CubicBezierAssembly} from './model/cubic-bezier';
 
-// NOTE: You can see JSDoc comments of `InputBindingPlugin` for details about each property
-//
-// `InputBindingPlugin<In, Ex>` means...
-// - The plugin receives the bound value as `Ex`,
-// - converts `Ex` into `In` and holds it
-//
-export const TemplateInputPlugin: InputBindingPlugin<number, number> = {
-	id: 'input-template',
+export interface CubicBezierBladeParams extends BaseBladeParams {
+	value: [number, number, number, number];
+	view: 'cubicbezier';
 
-	// This plugin template injects a compiled CSS by @rollup/plugin-replace
-	// See rollup.config.js for details
+	expanded?: boolean;
+	label?: string;
+	picker?: PickerLayout;
+}
+
+function createConstraint(): Constraint<CubicBezier> {
+	return new PointNdConstraint<CubicBezier>({
+		assembly: CubicBezierAssembly,
+		components: [0, 1, 2, 3].map((index) =>
+			index % 2 === 0
+				? new RangeConstraint({
+						min: 0,
+						max: 1,
+				  })
+				: undefined,
+		),
+	});
+}
+
+export const CubicBezierBladePlugin: BladePlugin<CubicBezierBladeParams> = {
+	id: 'cubic-bezier',
+	type: 'blade',
 	css: '__css__',
 
-	accept(exValue: unknown, params: InputParams) {
-		if (typeof exValue !== 'number') {
-			// Return null to deny the user input
-			return null;
-		}
+	accept(params) {
+		const p = ParamsParsers;
+		const result = parseParams(params, {
+			value: p.required.array(p.required.number),
+			view: p.required.constant('cubicbezier'),
 
-		// `view` option may be useful to provide a custom control for primitive values
-		if (params.view !== 'dots') {
-			return null;
-		}
-
-		// Return a typed value to accept the user input
-		return exValue;
+			expanded: p.optional.boolean,
+			label: p.optional.string,
+			picker: p.optional.custom<PickerLayout>((v) => {
+				return v === 'inline' || v === 'popup' ? v : undefined;
+			}),
+		});
+		return result ? {params: result} : null;
 	},
-
-	binding: {
-		reader(_args) {
-			return (exValue: unknown): number => {
-				// Convert an external unknown value into the internal value
-				return typeof exValue === 'number' ? exValue : 0;
-			};
-		},
-
-		constraint(args) {
-			// Create a value constraint from the user input
-			const constraints = [];
-			// You can reuse existing functions of the default plugins
-			const cr = createRangeConstraint(args.params);
-			if (cr) {
-				constraints.push(cr);
-			}
-			const cs = createStepConstraint(args.params);
-			if (cs) {
-				constraints.push(cs);
-			}
-			// Use `CompositeConstraint` to combine multiple constraints
-			return new CompositeConstraint(constraints);
-		},
-
-		equals: (inValue1: number, inValue2: number) => {
-			// Simply use `===` to compare primitive values,
-			// or a custom comparator for complex objects
-			return inValue1 === inValue2;
-		},
-
-		writer(_args) {
-			return (target: BindingTarget, inValue) => {
-				// Use `target.write()` to write the primitive value to the target,
-				// or `target.writeProperty()` to write a property of the target
-				target.write(inValue);
-			};
-		},
-	},
-
 	controller(args) {
-		// Create a controller for the plugin
-		return new PluginController(args.document, {
-			value: args.value,
+		const rv = new CubicBezier(...args.params.value);
+		const v = createValue(rv, {
+			constraint: createConstraint(),
+			equals: CubicBezier.equals,
+		});
+		const vc = new CubicBezierController(args.document, {
+			axis: {
+				baseStep: 0.1,
+				textProps: ValueMap.fromObject({
+					draggingScale: 0.01,
+					formatter: createNumberFormatter(2),
+				}),
+			},
+			expanded: args.params.expanded ?? false,
+			pickerLayout: args.params.picker ?? 'popup',
+			value: v,
 			viewProps: args.viewProps,
 		});
+		return new LabeledValueController(args.document, {
+			blade: args.blade,
+			props: ValueMap.fromObject({
+				label: args.params.label,
+			}),
+			valueController: vc,
+		});
+	},
+	api(args) {
+		if (!(args.controller instanceof LabeledValueController)) {
+			return null;
+		}
+		if (!(args.controller.valueController instanceof CubicBezierController)) {
+			return null;
+		}
+		return new CubicBezierApi(args.controller);
 	},
 };

@@ -6,19 +6,25 @@
 </head>
 <body>
 	<script src="../node_modules/tweakpane/dist/tweakpane.js"></script>
-	<script src="../dist/tweakpane-plugin-template.js"></script>
+	<script src="../dist/tweakpane-plugin-cubic-bezier.js"></script>
 	<script>
-		const params = {
-			prop: 3,
-		};
-		window.pane = new Tweakpane();
+		const pane = new Tweakpane.Pane();
+		pane.registerPlugin(TweakpaneCubicBezierPlugin);
 
-		// TODO: Update parameters for your plugin
-		window.input = window.pane.addInput({test: 3}, 'test', {
-			view: 'dots',
-		}).on('change', (ev) => {
-			console.log(ev.value);
+		pane.addBlade({
+			view: 'cubicbezier',
+			expanded: true,
+			label: 'bezier',
+			picker: 'inline',
+			value: [0.5, 0, 0.5, 1],
 		});
+		pane.addBlade({
+			view: 'cubicbezier',
+			label: 'bezier',
+			value: [0.5, 0, 0.5, 1],
+		});
+
+		window.pane = pane;
 	</script>
 </body>
 </html>
