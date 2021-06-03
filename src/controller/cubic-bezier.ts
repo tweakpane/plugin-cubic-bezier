@@ -60,7 +60,7 @@ export class CubicBezierController
 		this.foldable_ = createFoldable(config.expanded);
 
 		this.view = new CubicBezierView(doc, {
-			expanded: this.foldable_.value('expanded'),
+			foldable: this.foldable_,
 			pickerLayout: config.pickerLayout,
 			viewProps: this.viewProps,
 		});

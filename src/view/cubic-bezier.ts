@@ -1,16 +1,16 @@
 import {
-	bindValue,
+	bindValueMap,
 	ClassName,
+	Foldable,
 	PickerLayout,
 	SVG_NS,
-	Value,
 	valueToClassName,
 	View,
 	ViewProps,
 } from '@tweakpane/core';
 
 interface Config {
-	expanded: Value<boolean>;
+	foldable: Foldable;
 	pickerLayout: PickerLayout;
 	viewProps: ViewProps;
 }
@@ -27,9 +27,14 @@ export class CubicBezierView implements View {
 		this.element = doc.createElement('div');
 		this.element.classList.add(className());
 		config.viewProps.bindClassModifiers(this.element);
-		bindValue(
-			config.expanded,
-			valueToClassName(this.element, className(undefined, 'expanded')),
+		config.foldable.bindExpandedClass(
+			this.element,
+			className(undefined, 'expanded'),
+		);
+		bindValueMap(
+			config.foldable,
+			'completed',
+			valueToClassName(this.element, className(undefined, 'cpl')),
 		);
 
 		const headElem = doc.createElement('div');
