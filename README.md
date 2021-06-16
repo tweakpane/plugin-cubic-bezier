@@ -1,3 +1,6 @@
+:warning: This project was integrated into [plugin-essentials](https://github.com/tweakpane/plugin-essentials).
+
+
 # tweakpane-plugin-cubic-bezier
 Cubic bezier control for Tweakpane.
 
